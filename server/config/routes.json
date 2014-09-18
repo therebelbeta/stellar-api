@@ -1,0 +1,7 @@
+{
+  "github": {
+    "login": "/api/auth/github",
+    "callback": "/api/auth/github/callback"
+
+  }
+}
