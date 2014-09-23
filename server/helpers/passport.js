@@ -41,6 +41,7 @@ module.exports = {
             if (err) return done(true, err);
             console.info('no req.user', existingUser)
             if (existingUser) {
+              console.log('existing')
               // update user with new session token
               var sessionToken = session.createToken(req, profile.id)
               existingUser.sessionToken = sessionToken;
@@ -49,49 +50,52 @@ module.exports = {
                 req.user = existingUser;
                 return done(null, existingUser)
               });
-            };
-            var user = new User();
-            user.email = profile._json.email;
-            user.github = profile.id;
-            user.tokens.push({
-              kind: 'github',
-              accessToken: accessToken
-            });
-            var sessionToken = session.createToken(req, profile.id)
-            user.sessionToken = sessionToken;
-            console.log(user.sessionToken)
-            user.profile.tags = [];
-            user.profile.name = profile.displayName;
-            user.profile.picture = profile._json.avatar_url;
-            user.profile.location = profile._json.location;
-            user.profile.website = profile._json.blog;
-            user.profile.gravatar = _toGravatar(profile._json.email)
-            user.profile.useGravatar = false;
-            user.profile.emailUpdates = true;
-            user.save(function(err) {
-              // console.log('error', err)
-              var repo = new Repo();
-              repo.id = profile.id;
-              repo.repos = {};
-              repo.repos.local = [];
-              repo.repos.remote = [];
-              repo.save(function(err) {
-                if (err) return done(true, err);
-                req.user = user;
-                req.user.sessionToken = sessionToken;
-                done(err, user);
+            }
+            else {
+              var user = new User();
+              user.email = profile._json.email;
+              user.github = profile.id;
+              user.tokens.push({
+                kind: 'github',
+                accessToken: accessToken
               });
-            });
+              var sessionToken = session.createToken(req, profile.id)
+              user.sessionToken = sessionToken;
+              user.profile.tags = [];
+              user.profile.name = profile.displayName;
+              user.profile.picture = profile._json.avatar_url;
+              user.profile.location = profile._json.location;
+              user.profile.website = profile._json.blog;
+              user.profile.gravatar = _toGravatar(profile._json.email)
+              user.profile.useGravatar = false;
+              user.profile.emailUpdates = true;
+              user.save(function(err) {
+                // console.log('error', err)
+                var repo = new Repo();
+                repo.id = profile.id;
+                repo.repos = {};
+                repo.repos.local = [];
+                repo.repos.remote = [];
+                repo.save(function(err) {
+                  if (err) return done(true, err);
+                  req.user = user;
+                  req.user.sessionToken = sessionToken;
+                  done(err, user);
+                });
+              });
+            }
           });
         }
       )
     );
   },
   gh_handler: passport.authenticate('github', {
-    session: false
+    session: false,
+    scope: 'user,repo'
   }),
   gh_callback_handler: passport.authenticate('github', {
-    session: false
+    session: false,
+    scope: 'user,repo'
   })
 }
 

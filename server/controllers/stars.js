@@ -44,9 +44,9 @@ module.exports = {
         }
         else {
           data = data[0];
-          var thisd = new Date();
-          thisd = thisd.getTime();
-          if (data.lastSynced > thisd + 43200000 || !data.lastSynced || req.query
+          var thisTime = moment().subtract(12, 'hours').format('X');
+
+          if (data.lastSynced < thisTime || !data.lastSynced || req.query
             .force) {
             var allStars = [];
 
@@ -227,6 +227,82 @@ module.exports = {
 
   },
   deleteStar: function(req, res, next) {
+    console.log('deleting');
+    var userid = req.user.github;
+    var token = req.user.tokens[0].accessToken;
+    var repoId = parseInt(req.params.id);
+    Repo.find({
+        id: req.user.github
+      },
+      function(err, data) {
+        if (err) {
+          res.json(err);
+        }
+        else {
+          console.log('got data')
+          data = data[0];
+          if (data.repos.remote.length > 0) {
+            console.log('remote exists')
+            var allRemote = _.cloneDeep(data.repos.remote);
+            var allLocal = _.cloneDeep(data.repos.local);
+            var remote = _.where(allRemote, {
+              id: repoId
+            });
+            var local = _.where(allLocal, {
+              id: repoId
+            });
+            if (remote[0]) {
+              console.log('remote[0] exists')
+              var fullName = remote[0].full_name
+              var url = 'https://api.github.com/user/starred/' + fullName +
+                '?access_token=' + token;
+              var headers = {
+                'User-Agent': 'Constella',
+                'Accept': 'application/json'
+              };
+              unirest.delete(url)
+                .headers(headers)
+                .proxy('http://localhost:8888')
+                .strictSSL(false)
+                .end(function(response) {
+                  if (!response.error) {
+                    _afterCall(response.body)
+                  }
+                  else {
+                    console.log('error', response.body);
+                    res.send(418, {
+                      'error': 'an error occurred'
+                    });
+                  }
+                })
+
+              function _afterCall(newdata) {
+                console.log('unstarred. removing from database');
+                allRemote = _.omit(allRemote, {
+                  id: repoId
+                })
+                allLocal = _.omit(allLocal, {
+                  id: repoId
+                })
+                data.repos.remote = allRemote;
+                data.repos.local = allLocal;
+                console.log('saving');
+                data.save(function(err) {
+                  if (err) {
+                    return res.json({
+                      'error': err
+                    });
+                  }
+                  else {
+                    res.json('success');
+                  }
+                })
+              }
+            }
+          }
+        }
+      }
+    );
 
   }
 }
