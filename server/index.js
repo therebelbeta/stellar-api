@@ -8,7 +8,13 @@ var passportHelper = require('./helpers/passport');
 var routes = require('./routes');
 
 // set up server
+server.use(restify.acceptParser(server.acceptable));
+server.use(restify.authorizationParser());
+server.use(restify.dateParser());
 server.use(restify.queryParser());
+server.use(restify.jsonp());
+server.use(restify.gzipResponse());
+server.use(restify.bodyParser());
 server.use(passport.initialize());
 
 // initiate routes and passport
