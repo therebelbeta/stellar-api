@@ -14,3 +14,4 @@ results
 node_modules
 npm-debug.log
 server/config/secrets.json
+public

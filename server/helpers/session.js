@@ -17,16 +17,24 @@ module.exports = {
     return token;
   },
   checkToken: function(req, res, next) {
+    console.log('token')
     var ua = req.headers['user-agent'];
     var location = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     var now = moment().format('X');
     var token = req.headers['authorization'].split('Bearer ')[1];
-    var decoded = jwt.decode(token, secrets.jwt);
+    console.log('token2')
+    try {
+      var decoded = jwt.decode(token, secrets.jwt);
+    }
+    catch (e) {
+      var decoded = {};
+    }
+
     if (
       decoded.location !== location ||
       decoded.ua !== ua
     ) {
-      _internal.fail(res);
+      _internal.fail(res, 'Session invalid.');
     }
     else if (parseInt(decoded.expiration) < parseInt(now)) {
       _internal.fail(res, {
@@ -57,6 +65,6 @@ module.exports = {
 // If this gets too big, split out into a separate helper file
 var _internal = {
   fail: function(res, msg) {
-    res.send(401, msg);
+    res.send(418, msg);
   }
 }

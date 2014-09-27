@@ -13,6 +13,7 @@ var Repo = require('../model/Repo');
 
 module.exports = {
   getAllStars: function(req, res, next) {
+    console.log('here')
     Repo.find({
       id: req.user.github
     }, function(err, data) {
@@ -27,6 +28,7 @@ module.exports = {
           lastSynced: data.lastSynced,
           tags: data.tags
         }
+        console.log(response.repos.remote[0]);
         res.json(response);
       }
     });
@@ -66,6 +68,8 @@ module.exports = {
                   };
                   unirest.get(url)
                     .headers(headers)
+                    .proxy('http://localhost:8888')
+                    .strictSSL(false)
                     .end(function(response) {
                       if (!response.error) {
                         tempAll = _.union(response.body, tempAll);
@@ -103,7 +107,35 @@ module.exports = {
             everyThousand(0);
 
             function afterCalls() {
-              data.repos.remote = allStars;
+              var tempStars = allStars.map(function(obj) {
+                var thisStar = {
+                  id: obj.id,
+                  name: obj.name,
+                  full_name: obj.full_name,
+                  owner: {
+                    login: obj.login,
+                    id: obj.id,
+                    avatar_url: obj.avatar_url,
+                    gravatar_id: obj.gravatar_id,
+                  },
+                  private: obj.private,
+                  description: obj.description,
+                  fork: obj.fork,
+                  created_at: obj.created_at,
+                  updated_at: obj.updated_at,
+                  ssh_url: obj.ssh_url,
+                  clone_url: obj.clone_url,
+                  svn_url: obj.svn_url,
+                  homepage: obj.homepage,
+                  stargazers_count: obj.stargazers_count,
+                  watchers_count: obj.watchers_count,
+                  language: obj.language,
+                  forks_count: obj.forks_count,
+                  open_issues: obj.open_issues,
+                }
+                return thisStar;
+              })
+              data.repos.remote = tempStars;
               data.lastSynced = moment().format('X');
               data.save(function(err) {
                 if (err) return res.json({
@@ -124,6 +156,7 @@ module.exports = {
     var userid = req.user.github;
     var token = req.user.tokens[0].accessToken;
     var repoId = parseInt(req.params.id);
+    console.log('getting star', repoId)
     Repo.find({
         id: req.user.github
       },
@@ -132,14 +165,17 @@ module.exports = {
           res.json(err);
         }
         else {
+          console.log('got stars')
           data = data[0];
           if (data.repos.remote.length > 0) {
+            console.log(data.repos.remote);
             var remote = _.where(data.repos.remote, {
               id: repoId
             });
             var local = _.where(data.repos.local, {
               id: repoId
             });
+            console.log(remote);
             if (remote[0]) {
               var _finalData = {
                 remote: remote[0],
@@ -147,6 +183,7 @@ module.exports = {
               }
               res.json(_finalData);
             }
+
           }
         }
       }
