@@ -1,4 +1,2 @@
-constella-rebuild
+stellar-api
 =================
-
-A rebuild of the backend of constella
