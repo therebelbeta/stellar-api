@@ -1,5 +1,5 @@
 {
-  "name": "constella-api",
+  "name": "stellar-api",
   "version": "0.0.0",
   "description": "in progress",
   "main": "app.js",
@@ -8,19 +8,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/therebelrobot/constella-rebuild.git"
+    "url": "https://github.com/therebelrobot/stellar-api.git"
   },
   "keywords": [
-    "constella",
+    "stellar",
     "github",
     "stars"
   ],
   "author": "Trent Oswald <trentoswald@therebelrobot.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/therebelrobot/constella-rebuild/issues"
+    "url": "https://github.com/therebelrobot/stellar-api/issues"
   },
-  "homepage": "https://github.com/therebelrobot/constella-rebuild",
+  "homepage": "https://github.com/therebelrobot/stellar-api",
   "dependencies": {
     "async": "^0.9.0",
     "bcrypt-nodejs": "0.0.3",
