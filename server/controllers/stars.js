@@ -10,16 +10,16 @@ var unirest = require("unirest");
 // API docs: http://unirest.io/nodejs.html
 
 var Repo = require('../model/Repo');
+var secrets = require('../config/secrets');
 
 module.exports = {
   getAllStars: function(req, res, next) {
     var page = parseInt(req.query.page) || 0;
     var count = parseInt(req.query.count) || 50;
-    var sort = req.query.sort || false;
-    var filtertype = req.query.type || false;
-    var filterquery = req.query.q || false;
-    console.log(page, count)
-    console.log('getting data', req.user.github)
+    var sort = req.query.sort || null;
+    var filtertype = req.query.type || null;
+    var filterquery = req.query.q || null;
+
     Repo.find({
       id: req.user.github
     }, function(err, data) {
@@ -27,28 +27,77 @@ module.exports = {
         res.json(err);
       }
       else {
-        console.log('got data')
         data = data[0];
-        console.log(' ');
         var reposRemote = _.cloneDeep(data.repos.remote);
+        var reposLocal = _.cloneDeep(data.repos.local);
 
         //combine with local data here
+        reposRemote = _.map(reposRemote, function(obj) {
+          var thisLocalData = _.where(reposLocal, {
+            id: obj.id
+          });
+          console.log(obj.id, reposLocal.length, thisLocalData.length)
+          if (thisLocalData.length > 0) {
+            thisLocalData = thisLocalData[0];
+            obj.local_name = thisLocalData.name;
+            obj.local_language = thisLocalData.language;
+            obj.local_tags = thisLocalData.tags;
+            obj.local_notes = thisLocalData.notes;
+          }
+          return obj;
+        })
+        console.log(reposLocal)
 
         //run search query here
 
         //pagination
-        var startIndex = page * count;
+        var finalRepos;
+        var lastPage = Math.floor(reposRemote.length / count) + 1;
+        var startIndex = (page - 1) * count;
         var endIndex = startIndex + count;
-        reposRemote = reposRemote.slice(startIndex, endIndex);
+        if (lastPage === page) {
+          endIndex = reposRemote.length - 1;
+        }
+
+        var pagination = {
+          page: page,
+          count: count,
+          index: [startIndex, endIndex],
+          total_pages: lastPage,
+          total_count: reposRemote.length
+        };
+        if (reposRemote.length > count) {
+          finalRepos = reposRemote.slice(startIndex, endIndex);
+          if (finalRepos.length === count) {
+            pagination.next = secrets.protocol +
+              '://' + secrets.hostname +
+              ':' + secrets.port +
+              '/api/star?page=' + (page + 1) +
+              '&count=' + count +
+              '&sort=' + sort +
+              '&type=' + filtertype +
+              '&q=' + filterquery;
+            pagination.last = secrets.protocol +
+              '://' + secrets.hostname +
+              ':' + secrets.port +
+              '/api/star?page=' + (lastPage) +
+              '&count=' + count +
+              '&sort=' + sort +
+              '&type=' + filtertype +
+              '&q=' + filterquery
+
+          }
+        }
+        else {
+          finalRepos = _.cloneDeep(reposRemote);
+        }
 
         //craft response
         var response = {
-          repos: {
-            remote: reposRemote,
-            local: false
-          },
           lastSynced: data.lastSynced,
-          tags: data.tags
+          pagination: pagination,
+          tags: data.tags,
+          repos: finalRepos
         }
         res.json(response);
       }
@@ -68,7 +117,6 @@ module.exports = {
         var thisd = moment();
         var lastd = moment(data.lastSynced, 'X');
         var difference = thisd.diff(lastd, 'minutes')
-        console.log(typeof difference, difference);
         if (difference >= 5 || !data.lastSynced || req.query
           .force) {
           _recursiveCalls(data);
@@ -168,9 +216,96 @@ module.exports = {
     }
   },
   getStar: function(req, res, next) {
+    var id = req.params.id || false;
 
+    Repo.find({
+      id: req.user.github
+    }, function(err, data) {
+      if (err) {
+        res.json(err);
+      }
+      else {
+        data = data[0];
+        var reposRemote = _.cloneDeep(data.repos.remote);
+        var thisRepo = _.where(reposRemote, {
+          id: id
+        })[0];
+        // get readme
+
+
+
+        //craft response
+        var response = thisRepo;
+        res.json(response);
+      }
+    });
   },
   updateStar: function(req, res, next) {
+    var id = parseInt(req.params.id);
+    var name = req.body.name;
+    var language = req.body.language;
+    var tags = req.body.tags;
+    if (tags && tags.indexOf(',') > -1) {
+      tags = tags.split(',');
+    }
+    else if (tags) {
+      tags = [tags];
+    }
+    var notes = req.body.notes;
+
+    Repo.find({
+      id: req.user.github
+    }, function(err, data) {
+      if (err) {
+        res.json(err);
+      }
+      else {
+        data = data[0];
+        var reposLocal = _.cloneDeep(data.repos.local);
+        var thisRepo = _.where(reposLocal, {
+          id: id
+        });
+        if (thisRepo.length === 0) {
+          thisRepo = {
+            id: id,
+            name: name,
+            language: language,
+            tags: tags,
+            notes: notes
+          };
+          data.repos.local.push(thisRepo);
+        }
+        else {
+          thisRepo = {
+            id: id,
+            name: name,
+            language: language,
+            tags: tags,
+            notes: notes
+          };
+          reposLocal = _.reject(reposLocal, {
+            id: id
+          });
+          reposLocal.push(thisRepo);
+          data.repos.local = _.cloneDeep(reposLocal);
+        }
+        _.forEach(tags, function(thisTag, index) {
+          var findTag = _.where(data.tags, thisTag);
+          var tagExists = findTag.length > 0;
+          if (!tagExists) {
+            data.tags.push(thisTag);
+          }
+        });
+        data.save(function(err) {
+          if (err) return res.json({
+            'error': err
+          });
+          res.json({
+            update: 'complete'
+          });
+        });
+      }
+    });
 
   },
   deleteStar: function(req, res, next) {
