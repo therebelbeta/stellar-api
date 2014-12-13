@@ -9,6 +9,7 @@ var secrets = require('./config/secrets');
 var routes = require('./routes');
 
 // set up server
+server.use(restify.sanitizePath()); // Add this line
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.authorizationParser());
 server.use(restify.dateParser());
