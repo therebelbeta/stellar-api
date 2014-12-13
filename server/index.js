@@ -24,7 +24,11 @@ server.use(passport.initialize());
 routes.init(server);
 passportHelper.gh_passport();
 
+server.get(/.*/, restify.serveStatic({
+  'directory': './public',
+  'default': 'index.html'
+}));
 // Start the app by listening on <port>
 var port = secrets.port;
 server.listen(port)
-console.log('Stellar API started on port ' + port)
+console.log('Stellar started on port ' + port)
