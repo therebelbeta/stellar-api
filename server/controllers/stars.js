@@ -14,7 +14,7 @@ var secrets = require('../config/secrets');
 
 module.exports = {
   getAllStars: function(req, res, next) {
-    var page = parseInt(req.query.page) || 0;
+    var page = parseInt(req.query.page) || 1;
     var count = parseInt(req.query.count) || 50;
     var sort = req.query.sort || null;
     var filtertype = req.query.type || null;
@@ -27,7 +27,7 @@ module.exports = {
         res.json(err);
       }
       else {
-        data = data[0];
+        data = data[data.length - 1];
         var reposRemote = _.cloneDeep(data.repos.remote);
         var reposLocal = _.cloneDeep(data.repos.local);
 
